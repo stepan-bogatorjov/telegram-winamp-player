@@ -46,9 +46,9 @@ const bot = new Telegraf(BOT_TOKEN);
 
 bot.start((ctx) => {
     return ctx.reply(
-        "Привет! Это Winamp-плеер 🎶\nНажми кнопку, чтобы открыть.",
+        "Нажми кнопку, чтобы открыть.",
         Markup.inlineKeyboard([
-            Markup.button.webApp("🟩 Открыть плеер", WEBAPP_URL),
+            Markup.button.webApp("🎧", WEBAPP_URL),
         ])
     );
 });
