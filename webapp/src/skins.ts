@@ -1,65 +1,51 @@
-export type SkinInfo = {
-    id: string;
-    name: string;
-    url: string;
-};
+import type Webamp from "webamp";
+import type {ApiSkin} from "./api";
 
-export type WebampInstance = {
-    setSkinFromUrl: (url: string) => void;
-};
+const SKIN_STORAGE_KEY = "opg-player-selected-skin-id";
 
-const rawSkins = import.meta.glob("./skins/*.wsz", {
-    as: "url",
-    eager: true,
-});
-
-function prettifySkinName(raw: string): string {
-    const noExt = raw.replace(/\.wsz$/i, "");
-    const withSpaces = noExt.replace(/[_\-]+/g, " ");
-    return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
-}
-
-export const SKINS: SkinInfo[] = Object.entries(rawSkins).map(
-    ([path, url], index) => {
-        const fileName = path.split("/").pop() || `skin-${index}`;
-        const id = fileName.replace(/\.wsz$/i, "");
-        return {
-            id,
-            name: prettifySkinName(fileName),
-            url: url as string,
-        };
-    }
-);
-
-export const defaultSkin: SkinInfo | null = SKINS[0] ?? null;
-
-export function attachSkinSelector(webamp: WebampInstance): HTMLSelectElement | null {
-    if (SKINS.length <= 1) {
+export const attachSkinSelector = (
+    webamp: Webamp,
+    skins: ApiSkin[]
+): HTMLSelectElement | null => {
+    if (skins.length <= 1) {
         return null;
     }
+
+    const currentSkin = loadSavedSkin(skins);
 
     const select = document.createElement("select");
     select.className = "skin-select";
 
-    SKINS.forEach((skin) => {
+    skins.forEach((skin) => {
         const option = document.createElement("option");
         option.value = skin.id;
         option.textContent = skin.name;
-        if (defaultSkin && skin.id === defaultSkin.id) {
+        if (currentSkin && skin.id === currentSkin.id) {
             option.selected = true;
         }
         select.appendChild(option);
     });
 
-    select.addEventListener("change", (event) => {
+    select.addEventListener("change", (event: Event) => {
         const target = event.target as HTMLSelectElement;
-        const skin = SKINS.find((s) => s.id === target.value);
+        const skin = skins.find((s) => s.id === target.value);
         if (!skin) return;
 
         webamp.setSkinFromUrl(skin.url);
+        saveSkin(skin.id);
     });
 
     document.body.appendChild(select);
 
     return select;
-}
+};
+
+export const loadSavedSkin = (skins: ApiSkin[]): ApiSkin | null => {
+    const savedId = window.localStorage.getItem(SKIN_STORAGE_KEY);
+    if (!savedId) return null;
+    return skins.find((s) => s.id === savedId) || null;
+};
+
+export const saveSkin = (skinId: string): void => {
+    window.localStorage.setItem(SKIN_STORAGE_KEY, skinId);
+};

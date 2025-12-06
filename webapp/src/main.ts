@@ -1,25 +1,58 @@
 import "./style.css";
-import Webamp from "webamp";
-import {defaultSkin, attachSkinSelector, type WebampInstance} from "./skins";
+import Webamp, {type Track} from "webamp";
+import {
+    fetchTracks,
+    fetchSkins,
+    type ApiSkin,
+} from "./api";
+import {
+    attachSkinSelector,
+    loadSavedSkin,
+} from "./skins";
+import {getFullUrl} from "./utils";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) {
     throw new Error("#app not found");
 }
 
-const webamp = new Webamp({
-    initialTracks: [
-        {
+async function main() {
+    try {
+        const [apiTracks, apiSkins] = await Promise.all([
+            fetchTracks(),
+            fetchSkins(),
+        ]);
+
+        const savedSkin = loadSavedSkin(apiSkins);
+        const webampTracks: Track[] = apiTracks.map(({title, artist, album, url}) => ({
             metaData: {
-                title: "Test Track",
-                artist: "Winamp",
+                title,
+                artist: artist ?? "Unknown artist",
+                album: album ?? "Unknown album",
             },
-            url: "https://archive.org/download/testmp3testfile/mpthreetest.mp3",
-        },
-    ],
-    initialSkin: defaultSkin ? {url: defaultSkin.url} : undefined,
-});
+            url: getFullUrl(url),
+        }));
 
-webamp.renderWhenReady(app);
+        const skinInfos: ApiSkin[] = apiSkins.map(({id, name, url}) => ({
+            id,
+            name,
+            url: getFullUrl(url),
+        }));
 
-attachSkinSelector(webamp as WebampInstance);
+        const webamp = new Webamp({
+            initialTracks: webampTracks,
+            initialSkin: savedSkin ? {url: getFullUrl(savedSkin.url)} : undefined,
+        });
+
+        webamp.renderWhenReady(app as HTMLElement);
+
+        if (skinInfos.length > 0) {
+            attachSkinSelector(webamp, skinInfos);
+        }
+    } catch (e) {
+        console.error("Failed to load tracks/skins", e);
+    }
+
+}
+
+main().catch((e) => console.error(e));
